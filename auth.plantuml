@@ -1,0 +1,10 @@
+@startuml
+title ASMP Authentication Flow
+
+Application->Server: Access Token Request
+note over Server
+	Needs client_id, client_secret,
+	grant_type=client_credentials[, scope]
+end note
+Server->Application: Access Token
+@enduml
