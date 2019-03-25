@@ -1,0 +1,266 @@
+openapi: 3.0.1
+info:
+  title: ASMP
+  description: Application Server Management Protocol server
+  termsOfService: http://asmp.io/terms/
+  contact:
+    email: apiteam@asmp.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+externalDocs:
+  description: Find out more about ASMP
+  url: http://asmp.io
+servers:
+- url: https://swagger.asmp.io/v1
+- url: http://swagger.asmp.io/v1
+tags:
+- name: change
+  description: Change related endpoints
+- name: rollback
+  description: Rollback related endpoints
+- name: status
+  description: Status related endpoints
+paths:
+  /check:
+    post:
+      summary: Define a list of desired changes using abstract constraints. Server should process these constraints, check if they can be fulfilled and respond with the possible resolutions.
+      tags: ["change"]
+      operationId: check
+      requestBody:
+        description: Check request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+        required: true
+      responses:
+        200:
+          description: Response showing the server's resolution to the check request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - asmp_auth: []
+  /change:
+    post:
+      summary: Request a specific change for one or multiple components as previously checked in a /check request
+      tags: ["change"]
+      operationId: change
+      requestBody:
+        description: Request a specific change
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeRequest'
+        required: true
+      responses:
+        200:
+          description: Response providing the change ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeResponse'
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - asmp_auth: []
+  /rollback:
+    post:
+      summary: Rollback a specific change set
+      tags: ["rollback"]
+      operationId: rollback
+      requestBody:
+        description: Define the changeset that should be rolled back
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackRequest'
+        required: true
+      responses:
+        200:
+         description: Response providing the rollback ID
+         content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeResponse'
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - asmp_auth: []
+  /status/{id}:
+    get:
+      summary: Get the current status for a given request ID
+      tags: ["status"]
+      operationId: status
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: 'uuid'
+            example: 'e38443a5-e6cb-4297-98cc-28eced0d8e7e'
+          required: true
+          description: UUID of the change to get the status from
+      responses:
+        200:
+         description: Response describing the current change status
+         content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        405:
+          description: Invalid input
+          content: {}
+      security:
+      - asmp_auth: []
+components:
+  schemas:
+    CheckRequest:
+      type: object
+      properties:
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentGroup'
+    RollbackRequest:
+      type: object
+      required:
+        - id
+      properties:
+        callback:
+          type: string
+          format: uri
+          description: Callback URL being called once the request has been processed
+        id:
+          type: string
+          format: uuid
+          example: 'e38443a5-e6cb-4297-98cc-28eced0d8e7e'
+    ChangeRequest:
+      type: object
+      required:
+        - components
+      properties:
+        callback:
+          type: string
+          format: uri
+          description: Callback URL being called once the request has been processed
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentChange'
+    CheckResponse:
+      type: object
+      properties:
+        fullfilable:
+          type: boolean
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentChange'
+      example: |
+        {
+          fullfilable: true
+          components: [
+            {
+              name: 'PHP',
+              value: '7.2.9',
+            }
+          ]
+        }
+    ComponentGroup:
+      type: array
+      description: Array of component change requests. A change request for a component group can be fufilled if ANY of the individual requests can be fulfilled. The order of the items within the component group MUST be followed during processing, using the first fullfilable request.
+      items:
+        $ref: '#/components/schemas/ConstraintGroup'
+      minItems: 1
+    ComponentChange:
+      required:
+      - name
+      - value
+      type: object
+      properties:
+        name:
+          type: string
+          description: component name according to reserved component names, see asmp.io
+          example: PHP
+        value:
+          type: string
+          description: Best value for the requested constraint, determined by the server
+    ConstraintGroup:
+      required:
+      - name
+      - constraint
+      type: object
+      properties:
+        name:
+          type: string
+          description: component name according to reserved component names, see asmp.io
+          example: PHP
+        constraints:
+          description: Array of constraints for the given component. A change request can be fulfilled if ALL of the contraints defined in the array can be fulfilled.
+          type: array
+          items:
+            $ref: '#/components/schemas/Constraint'
+    Constraint:
+      type: object
+      description: Defining a component contraint using an operator -> value property. A constraint can only hold one property.
+      properties:
+        '>':
+          type: string
+          description: Greater-than constraint
+        '<':
+          type: string
+          description: Smaller-than constraint
+        '=':
+          type: string
+          description: Exact-match constraint
+        '!=':
+          type: string
+          description: Must-not-match constraint
+        '<=':
+          type: string
+          description: Smaller-than-or-equal constraint
+        '>=':
+          type: string
+          description: Larger-than-or-equal constraint
+      maxProperties: 1
+    ChangeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        id:
+          type: string
+          format: uuid
+          example: 'e38443a5-e6cb-4297-98cc-28eced0d8e7e'
+    StatusResponse:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/ChangeStatusCode'
+        message:
+          type: string
+    ChangeStatusCode:
+      type: integer
+      enum: [202,200,422,500]
+      description: >
+            Change Status Code:
+             * `202` - Change is pending
+             * `200` - Change has been completed
+             * `422` - The requested changeset can not be fulfilled
+             * `500` - An error occured
+  securitySchemes:
+    asmp_auth:
+      type: apiKey
+      name: X-API-KEY
+      in: header
+
+  
