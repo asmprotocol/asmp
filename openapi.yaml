@@ -158,7 +158,7 @@ components:
     CheckResponse:
       type: object
       properties:
-        fullfilable:
+        fulfillable:
           type: boolean
         components:
           type: array
@@ -166,7 +166,7 @@ components:
             $ref: '#/components/schemas/ComponentChange'
       example: |
         {
-          fullfilable: true
+          fulfillable: true,
           components: [
             {
               name: 'PHP',
@@ -176,7 +176,7 @@ components:
         }
     ComponentGroup:
       type: array
-      description: Array of component change requests. A change request for a component group can be fufilled if ANY of the individual requests can be fulfilled. The order of the items within the component group MUST be followed during processing, using the first fullfilable request.
+      description: Array of component change requests. A change request for a component group can be fufilled if ANY of the individual requests can be fulfilled. The order of the items within the component group MUST be followed during processing, using the first fulfillable request.
       items:
         $ref: '#/components/schemas/ConstraintGroup'
       minItems: 1
